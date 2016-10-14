@@ -1,0 +1,10 @@
+{
+  "name": "thoughtcomplete",
+  "version": "0.1.0",
+  "dependencies": {
+    "list": "latest"
+  },
+  "scripts": {
+    "start": "list"
+  }
+}

@@ -1,0 +1,305 @@
+<!doctype html>
+<html>
+  <head>
+    <title>thoughtcomplete</title>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font-family: "SF UI Text", -apple-system, Helvetica, Arial, sans-serif;
+      }
+
+      a {
+        color: #42D3FF;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        height: 100%;
+        min-height: 100vh;
+        padding: 0;
+        position: relative;
+      }
+
+      #input {
+        height: 200px;
+      }
+
+      #title {
+        font-size: 15px;
+        padding: 100px;
+        text-align: center;
+      }
+
+      #title-caret {
+        display: inline-block;
+        height: 20px;
+        width: 2px;
+        position: absolute;
+        background: #4A90E2;
+      }
+
+      #title-rest {
+        color: #AEAEAE;
+      }
+
+      #content {
+        text-align: center;
+        font-size: 13px;
+        color: #4A4A4A;
+      }
+
+      #quote {
+        font-style: oblique;
+        color: #9B9B9B;
+      }
+
+      #content p {
+        margin-bottom: 30px;
+        line-height: 24px;
+      }
+
+      footer {
+        position: absolute;
+        bottom: 0;
+        text-align: center;
+        padding: 15px;
+        width: 100%;
+        font-size: 13px;
+        color: #4A4A4A;
+      }
+
+      #textarea-wrap {
+        width: 502px;
+        height: 104px;
+        margin: auto;
+        border: 1px solid #9B9B9B;
+        position: relative;
+      }
+
+      textarea, #shim {
+        width: 500px;
+        height: 102px;
+        background: transparent;
+        font-size: 16px;
+        line-height: 20px;
+        display: block;
+        padding: 15px;
+        border-width: 0;
+        font-family: "SF UI Text", -apple-system, Helvetica, Arial, sans-serif;
+      }
+
+      #shim {
+        position: absolute;
+        top: 0;
+        pointer-events: none;
+        cursor: text;
+      }
+
+      #shim-value {
+        pointer-events: none;
+        color: transparent;
+      }
+
+      #shim-suggestion {
+        color: #9B9B9B;
+        pointer-events: all;
+        cursor: pointer;
+      }
+
+      #user {
+        position: relative;
+        bottom: 25px;
+        right: 10px;
+        text-align: right;
+        font-size: 11px;
+      }
+
+      #error {
+        color: red;
+        text-align: center;
+        font-size: 11px;
+        padding: 10px;
+      }
+
+      #tweet {
+        font-weigth: bold;
+        display: block;
+        padding: 10px;
+        margin: auto;
+        display: block;
+        width: 100px;
+        text-decoration: none;
+      }
+
+      #tweet.disabled {
+        color: #ccc;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="title">
+      <span id="title-main">Start writing</span><span id="title-caret"></span>
+      <span id="title-rest">and your thoughts will be autocompleted</span>
+    </p>
+
+    <div id="input"></div>
+
+    <div id="content">
+      <p id="quote">By this art you may contemplate the variation of the 23 letters...<br>—Anatomy of Melancholy, Pt. 2, Sec. II, Mem. IV (<a href="http://hyperdiscordia.crywalt.com/library_of_babel.html" target="_blank">…</a>)</p>
+      <p>This experiment uses the Twitter search API to type ahead of what you are thinking.<br>
+Thought of a funny pun, and curious if anyone else thought it?</p>
+      <p>Try <b>thoughtcomplete</b> by starting typing above.</p>
+    </div>
+
+    <footer>This experiment was created by Guillermo Rauch (<a href="https://twitter.com/rauchg" target="_blank">@rauchg</a>). It’s <a href="https://github.com/now-examples/thought-complete" target="_blank">open source</a>. Hosted by <a href="https://zeit.co/now" target="_blank">▲ZEIT</a></p>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/superagent/2.0.0/superagent.min.js"></script>
+    <script src="https://unpkg.com/react@15.3.2/dist/react.min.js"></script>
+    <script src="https://unpkg.com/react-dom@15.3.2/dist/react-dom.min.js"></script>
+    <script src="https://unpkg.com/babel-core@5.8.38/browser.min.js"></script>
+    <script src="/ms.js"></script>
+    <script type="text/babel">
+      const App = () => <Input />
+      class Input extends React.Component {
+        constructor (props) {
+          super(props)
+          this.state = {}
+        }
+
+        render () {
+          const suggestion = this.getSuggestion()
+          const add = ' #thoughtcomplete'
+          return <div>
+            <div id="textarea-wrap">
+              <textarea onKeyDown={this.onKeyDown.bind(this)} ref="input" onInput={this.onInput.bind(this)} placeholder="Write your thoughts…" />
+              <div id="shim">
+                <span id="shim-value">{ this.state.val }</span>
+                {
+                  suggestion && <span id="shim-suggestion" onClick={ this.complete.bind(this) }>
+                    { this.getSuggestionText(suggestion) }
+                  </span>
+                }
+              </div>
+              {
+                suggestion && (
+                  <div id="user">
+                    BY: <a href={`https://twitter.com/${suggestion.user}`} target="_blank">@{suggestion.user}</a>
+                    { ' ' }
+                    (<a href={`https://twitter.com/${suggestion.user}/status/${suggestion.id}`} target="_blank">{ ms(new Date() - new Date(suggestion.created_at)) } ago</a>)
+                  </div>
+                )
+              }
+            </div>
+            <p id="error">{ this.state.error }</p>
+            <a
+              className={ !this.state.val || this.state.val === '' ? 'disabled' : '' }
+              target="_blank"
+              href={ this.state.val ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(this.state.val.substr(0, 140 - add.length) + add)}` : '' }
+              id="tweet">TWEET</a>
+          </div>
+        }
+
+        complete () {
+          const text = this.getSuggestionText()
+          const val = this.state.val + text;
+          this.refs.input.value = val;
+          this.setState({
+            val,
+            suggestions: [],
+            activeSuggestion: null
+          })
+        }
+
+        onKeyDown (ev) {
+          const s = this.getSuggestion()
+          if (s) {
+            if (ev.keyCode === 39 /* right arrow */ ||
+                ev.keyCode === 13 /* enter */ ||
+                ev.keyCode === 9 /* tab */) {
+              ev.preventDefault();
+              this.complete();
+            }
+          }
+        }
+
+        getSuggestion () {
+          if (this.state.suggestions && this.state.suggestions.length) {
+            return this.state.suggestions[this.state.suggestionIndex || 0];
+          }
+        }
+
+        getSuggestionText () {
+          if (this.state.suggestions && this.state.suggestions.length) {
+            const { text } = this.state.suggestions[this.state.suggestionIndex || 0];
+            const text_ = text.toLowerCase()
+            const val_ = this.state.val.toLowerCase()
+            const i = text_.indexOf(val_)
+            return text.substr(i + val_.length)
+          } else {
+            return null
+          }
+        }
+
+        getSuggestions (val) {
+          if (!this.state.suggestions) return []
+          return this.state.suggestions.filter((s) => {
+            return s.text.toLowerCase().indexOf(val.toLowerCase()) !== -1
+          })
+        }
+
+        onInput () {
+          const val = this.refs.input.value.trim()
+          if (this.state.val === val) return console.log('ignore repeated input');
+          if (this.xhr) this.xhr.abort()
+
+          if (val === '') {
+            return this.setState({
+              val,
+              error: null,
+              suggestions: [],
+              activeSuggestion: null
+            })
+          }
+
+          this.setState({
+            val,
+            error: null,
+            suggestions: this.getSuggestions(val),
+            activeSuggestion: null
+          })
+
+          this.setState({ loading: true })
+
+          console.log('searching')
+          this.xhr = superagent
+          .get('https://thoughtcomplete-api.now.sh')
+          .query({ q: val })
+          .end((err, { body }) => {
+            this.setState({ loading: false })
+            if (err) return this.setState({ error: 'A network error occurred. Please retry' })
+            if (!body) return this.setState({ error: 'An unknown server error occurred. Please retry' })
+            if (body.error) return this.setState({ error: body.error.message })
+            console.log('suggestions', body.length)
+            this.setState({
+              error: null,
+              suggestions: body,
+              activeSuggestion: 0
+            })
+          })
+        }
+      }
+
+      ReactDOM.render(
+        <App />,
+        document.getElementById('input')
+      );
+    </script>
+  </body>
+</html>
+
