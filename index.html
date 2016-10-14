@@ -111,7 +111,7 @@
         cursor: pointer;
       }
 
-      #user {
+      #status {
         position: relative;
         bottom: 25px;
         right: 10px;
@@ -119,17 +119,21 @@
         font-size: 11px;
       }
 
-      #error {
+      #error, #help {
         color: red;
         text-align: center;
         font-size: 11px;
         padding: 10px;
       }
 
+      #help {
+        color: #999;
+      }
+
       #tweet {
         font-weigth: bold;
         display: block;
-        padding: 10px;
+        text-align: center;
         margin: auto;
         display: block;
         width: 100px;
@@ -154,22 +158,26 @@
       <p id="quote">By this art you may contemplate the variation of the 23 letters...<br>—Anatomy of Melancholy, Pt. 2, Sec. II, Mem. IV (<a href="http://hyperdiscordia.crywalt.com/library_of_babel.html" target="_blank">…</a>)</p>
       <p>This experiment uses the Twitter search API to type ahead of what you are thinking.<br>
 Thought of a funny pun, and curious if anyone else thought it?</p>
-      <p>Try <b>thoughtcomplete</b> by starting typing above.</p>
+      <p>Try <b>thoughtcomplete</b> by starting typing above.<br />
+      Or <a href="https://github.com/now-examples/thoughtcomplete">fork it</a> and deploy your own version.</p>
     </div>
 
-    <footer>This experiment was created by Guillermo Rauch (<a href="https://twitter.com/rauchg" target="_blank">@rauchg</a>). It’s <a href="https://github.com/now-examples/thought-complete" target="_blank">open source</a>. Hosted by <a href="https://zeit.co/now" target="_blank">▲ZEIT</a></p>
+    <footer>Created by Guillermo Rauch (<a href="https://twitter.com/rauchg" target="_blank">@rauchg</a>). <a href="https://github.com/now-examples/thought-complete" target="_blank">Source Code</a> (<b>MIT</b>). Brought to you by <a href="https://zeit.co/now" target="_blank">▲ZEIT</a>.</p>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/superagent/2.0.0/superagent.min.js"></script>
     <script src="https://unpkg.com/react@15.3.2/dist/react.min.js"></script>
+    <script src="https://unpkg.com/lodash@4.16.4/lodash.min.js"></script>
     <script src="https://unpkg.com/react-dom@15.3.2/dist/react-dom.min.js"></script>
     <script src="https://unpkg.com/babel-core@5.8.38/browser.min.js"></script>
-    <script src="/ms.js"></script>
+    <script src="ms.js"></script>
     <script type="text/babel">
       const App = () => <Input />
       class Input extends React.Component {
         constructor (props) {
           super(props)
           this.state = {}
+          this.search = _.throttle(this.search.bind(this), 500)
+          this.onInput = this.onInput.bind(this)
         }
 
         render () {
@@ -177,7 +185,7 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
           const add = ' #thoughtcomplete'
           return <div>
             <div id="textarea-wrap">
-              <textarea onKeyDown={this.onKeyDown.bind(this)} ref="input" onInput={this.onInput.bind(this)} placeholder="Write your thoughts…" />
+              <textarea onKeyDown={this.onKeyDown.bind(this)} ref="input" onInput={this.onInput} placeholder="Write your thoughts…" />
               <div id="shim">
                 <span id="shim-value">{ this.state.val }</span>
                 {
@@ -188,7 +196,9 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
               </div>
               {
                 suggestion && (
-                  <div id="user">
+                  <div id="status">
+                    { (this.state.suggestionIndex || 0) + 1 } / { this.state.suggestions.length }
+                    { ' ' }
                     BY: <a href={`https://twitter.com/${suggestion.user}`} target="_blank">@{suggestion.user}</a>
                     { ' ' }
                     (<a href={`https://twitter.com/${suggestion.user}/status/${suggestion.id}`} target="_blank">{ ms(new Date() - new Date(suggestion.created_at)) } ago</a>)
@@ -196,7 +206,13 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
                 )
               }
             </div>
-            <p id="error">{ this.state.error }</p>
+            {
+              this.state.error
+                ? <p id="error">{ this.state.error }</p>
+                : (this.state.suggestions && this.state.suggestions.length)
+                  ? <p id="help">Use ↑ and ↓ keys to get more suggestions</p>
+                  : <p id="help">{ this.state.loading ? 'Loading' : ' ' }</p>
+            }
             <a
               className={ !this.state.val || this.state.val === '' ? 'disabled' : '' }
               target="_blank"
@@ -212,18 +228,37 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
           this.setState({
             val,
             suggestions: [],
-            activeSuggestion: null
+            suggestionIndex: null
           })
         }
 
         onKeyDown (ev) {
           const s = this.getSuggestion()
-          if (s) {
-            if (ev.keyCode === 39 /* right arrow */ ||
-                ev.keyCode === 13 /* enter */ ||
-                ev.keyCode === 9 /* tab */) {
-              ev.preventDefault();
-              this.complete();
+          if (s && !ev.metaKey) {
+            if (this.state.suggestions.length) {
+              const i = this.state.suggestionIndex || 0
+              const len = this.state.suggestions.length
+              if (ev.keyCode === 38) { /* up */
+                if (i > 0) {
+                  ev.preventDefault()
+                  return this.setState({ suggestionIndex: i - 1 })
+                }
+              } else if (ev.keyCode === 40) { /* down */
+                if (i < len - 1) {
+                  ev.preventDefault()
+                  return this.setState({ suggestionIndex: i + 1 })
+                }
+              }
+            }
+
+            const el = ev.target
+            if (el.selectionStart === el.value.length) {
+              if (ev.keyCode === 39 /* right arrow */ ||
+                  ev.keyCode === 13 /* enter */ ||
+                  ev.keyCode === 9 /* tab */) {
+                ev.preventDefault();
+                this.complete();
+              }
             }
           }
         }
@@ -240,7 +275,7 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
             const text_ = text.toLowerCase()
             const val_ = this.state.val.toLowerCase()
             const i = text_.indexOf(val_)
-            return text.substr(i + val_.length)
+            return text.substr(i).substr(val_.length)
           } else {
             return null
           }
@@ -254,8 +289,9 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
         }
 
         onInput () {
-          const val = this.refs.input.value.trim()
+          const val = this.refs.input.value.trimLeft()
           if (this.state.val === val) return console.log('ignore repeated input');
+          this.search.cancel()
           if (this.xhr) this.xhr.abort()
 
           if (val === '') {
@@ -263,7 +299,7 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
               val,
               error: null,
               suggestions: [],
-              activeSuggestion: null
+              suggestionIndex: null
             })
           }
 
@@ -271,25 +307,49 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
             val,
             error: null,
             suggestions: this.getSuggestions(val),
-            activeSuggestion: null
+            suggestionIndex: null
           })
 
           this.setState({ loading: true })
 
           console.log('searching')
+          this.search(val)
+        }
+
+        search (val) {
           this.xhr = superagent
           .get('https://thoughtcomplete-api.now.sh')
           .query({ q: val })
-          .end((err, { body }) => {
+          .end((err, { body } = {}) => {
             this.setState({ loading: false })
             if (err) return this.setState({ error: 'A network error occurred. Please retry' })
             if (!body) return this.setState({ error: 'An unknown server error occurred. Please retry' })
             if (body.error) return this.setState({ error: body.error.message })
-            console.log('suggestions', body.length)
+            const dups = {}
+
+            // if we still have a matching suggestion, don't override it
+            const s = this.getSuggestion()
+            if (s) {
+              body.unshift(s)
+            }
+
+            // confirm actual match not just loose match
+            // and filter duplicates
+            body = body.filter((s) => {
+              const t = s.text.toLowerCase();
+              if (dups[t]) return false;
+              dups[t] = true;
+              return t.indexOf(val.toLowerCase()) !== -1;
+            })
+
+            if (body.length > 20) {
+              body.pop()
+            }
+
             this.setState({
               error: null,
               suggestions: body,
-              activeSuggestion: 0
+              suggestionIndex: 0
             })
           })
         }
