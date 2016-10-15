@@ -194,10 +194,10 @@
       <p>This experiment uses the Twitter search API to type ahead of what you are thinking.<br>
 Thought of a funny pun, and curious if anyone else thought it?</p>
       <p>Try <b>thoughtcomplete</b> by starting typing above.<br />
-      Or <a href="https://github.com/now-examples/thoughtcomplete">fork it</a> and deploy your own version.</p>
+      Or <a href="https://github.com/now-examples/thoughtcomplete">fork it</a> and <a href="https://zeit.co/now">deploy your own</a> version.</p>
     </div>
 
-    <footer>Created by Guillermo Rauch (<a href="https://twitter.com/rauchg" target="_blank">@rauchg</a>). <a href="https://github.com/now-examples/thought-complete" target="_blank">Source Code</a> (<b>MIT</b>). Brought to you by <a href="https://zeit.co/now" target="_blank">▲ZEIT</a>.</p>
+    <footer>Created by Guillermo Rauch (<a href="https://twitter.com/rauchg" target="_blank">@rauchg</a>). <a href="https://github.com/now-examples/thought-complete" target="_blank">Source Code</a> (<b>MIT</b>). Brought to you by <a href="https://zeit.co" target="_blank">▲ZEIT</a>.</p>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/superagent/2.0.0/superagent.min.js"></script>
     <script src="https://unpkg.com/react@15.3.2/dist/react.min.js"></script>
@@ -362,6 +362,7 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
             return this.setState({
               val,
               error: null,
+              loading: false,
               suggestions: [],
               suggestionIndex: null
             })
