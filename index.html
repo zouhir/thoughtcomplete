@@ -3,6 +3,7 @@
   <head>
     <title>thoughtcomplete</title>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       body {
         font-family: "SF UI Text", -apple-system, Helvetica, Arial, sans-serif;
@@ -19,7 +20,6 @@
       }
 
       body {
-        height: 100%;
         min-height: 100vh;
         padding: 0;
         position: relative;
@@ -56,6 +56,7 @@
       #quote {
         font-style: oblique;
         color: #9B9B9B;
+        font-size: 11px;
       }
 
       #content p {
@@ -130,6 +131,15 @@
         color: #999;
       }
 
+      #help button {
+        margin: 0 20px;
+      }
+
+      #help button.disabled {
+        color: #999;
+        pointer-events: none;
+      }
+
       #tweet {
         font-weigth: bold;
         display: block;
@@ -143,6 +153,31 @@
       #tweet.disabled {
         color: #ccc;
         pointer-events: none;
+      }
+
+      @media (max-width: 600px) {
+        #content {
+          padding: 15px 15px 50px;
+        }
+
+        #title {
+          padding: 20px 20px 50px;
+        }
+
+        #textarea-wrap {
+          width: 332px;
+          height: 104px;
+        }
+
+        textarea, #shim {
+          width: 330px;
+        }
+
+        footer {
+          padding: 15px;
+          font-size: 11px;
+          width: auto;
+        }
       }
     </style>
   </head>
@@ -171,6 +206,13 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
     <script src="https://unpkg.com/babel-core@5.8.38/browser.min.js"></script>
     <script src="ms.js"></script>
     <script type="text/babel">
+      const mobile = navigator.userAgent.match(/Android/i)
+       || navigator.userAgent.match(/webOS/i)
+       || navigator.userAgent.match(/iPhone/i)
+       || navigator.userAgent.match(/iPad/i)
+       || navigator.userAgent.match(/iPod/i)
+       || navigator.userAgent.match(/BlackBerry/i)
+       || navigator.userAgent.match(/Windows Phone/i);
       const App = () => <Input />
       class Input extends React.Component {
         constructor (props) {
@@ -178,6 +220,14 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
           this.state = {}
           this.search = _.throttle(this.search.bind(this), 500)
           this.onInput = this.onInput.bind(this)
+        }
+
+        componentDidMount () {
+          // yeah, this is a thing
+          // http://stackoverflow.com/questions/6890149/remove-3-pixels-in-ios-webkit-textarea
+          if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            this.refs.input.style['text-indent'] = '-3px';
+          }
         }
 
         render () {
@@ -210,8 +260,14 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
               this.state.error
                 ? <p id="error">{ this.state.error }</p>
                 : (this.state.suggestions && this.state.suggestions.length)
-                  ? <p id="help">Use ↑ and ↓ keys to get more suggestions</p>
-                  : <p id="help">{ this.state.loading ? 'Loading' : ' ' }</p>
+                  ? <p id="help">{ mobile ?
+                      [
+                        <button key="prev" className={ this.state.suggestionIndex === 0 ? 'disabled': '' } onClick={ this.prev.bind(this) }>Prev</button>,
+                        <button key="next" className={ this.state.suggestionIndex === this.state.suggestions.length - 1 ? 'disabled': '' } onClick={ this.next.bind(this) }>Next</button>
+                      ]
+                      : 'Use ↑ and ↓ keys to get more suggestions'
+                    }</p>
+                  : <p id="help">{ this.state.loading ? 'Loading' : <br /> }</p>
             }
             <a
               className={ !this.state.val || this.state.val === '' ? 'disabled' : '' }
@@ -261,6 +317,14 @@ Thought of a funny pun, and curious if anyone else thought it?</p>
               }
             }
           }
+        }
+
+        prev () {
+          this.setState({ suggestionIndex: this.state.suggestionIndex - 1 })
+        }
+
+        next () {
+          this.setState({ suggestionIndex: this.state.suggestionIndex + 1 })
         }
 
         getSuggestion () {
